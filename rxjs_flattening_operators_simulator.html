@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="fr" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RxJS Flattening Operators Simulator</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .request-pill {
+            animation: pulse-glow 1.5s infinite;
+        }
+        @keyframes pulse-glow {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.85; transform: scale(1.02); }
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 h-full flex flex-col selection:bg-indigo-500 selection:text-white">
+
+    <!-- Header -->
+    <header class="border-b border-slate-800 bg-slate-900/50 backdrop-blur sticky top-0 z-50 px-6 py-4 flex items-center justify-between">
+        <div class="flex items-center space-x-3">
+            <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center font-bold text-white shadow-lg shadow-indigo-500/30">Rx</div>
+            <div>
+                <h1 class="text-lg font-bold tracking-tight text-white">4 Fantastiques RxJS : Simulateur de Flattening</h1>
+                <p class="text-xs text-slate-400">Visualisation interactive de switchMap, mergeMap, concatMap et exhaustMap</p>
+            </div>
+        </div>
+        <div class="hidden sm:flex items-center space-x-4 text-xs font-medium text-slate-400">
+            <span class="flex items-center"><span class="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block mr-1.5"></span> Actif / Succès</span>
+            <span class="flex items-center"><span class="w-2.5 h-2.5 rounded-full bg-rose-500 inline-block mr-1.5"></span> Annulé / Ignoré</span>
+            <span class="flex items-center"><span class="w-2.5 h-2.5 rounded-full bg-amber-500 inline-block mr-1.5"></span> En file d'attente</span>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 grid grid-cols-1 lg:grid-cols-2 gap-6 overflow-y-auto">
+
+        <!-- ================= CARD 1: switchMap ================= -->
+        <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-5 flex flex-col shadow-xl relative overflow-hidden group">
+            <div class="absolute top-0 left-0 w-1.5 h-full bg-indigo-500"></div>
+            <div class="flex items-center justify-between mb-3">
+                <div class="flex items-center space-x-2">
+                    <span class="px-2.5 py-1 rounded-lg bg-indigo-500/10 text-indigo-400 text-xs font-mono font-semibold border border-indigo-500/20">switchMap</span>
+                    <h2 class="text-base font-semibold text-white">Le Zappeur (Typeahead)</h2>
+                </div>
+                <span class="text-xs text-slate-400 italic">Annule le précédent si nouveau</span>
+            </div>
+            <p class="text-xs text-slate-400 mb-4">
+                Idéal pour la recherche instantanée. Si une nouvelle frappe arrive, l'appel HTTP en cours est immédiatement annulé.
+            </p>
+
+            <!-- Controller Sandbox -->
+            <div class="bg-slate-950/60 rounded-xl p-4 border border-slate-800/80 flex flex-col space-y-3 mb-4">
+                <div class="flex items-center justify-between">
+                    <label class="text-xs font-medium text-slate-300">Simuler la saisie rapide :</label>
+                    <span class="text-[10px] text-indigo-400 bg-indigo-950/50 px-2 py-0.5 rounded border border-indigo-800/50">Délai API : 2s</span>
+                </div>
+                <div class="flex space-x-2">
+                    <button onclick="triggerSwitchMap('A')" class="flex-1 bg-slate-800 hover:bg-slate-700 active:scale-95 transition text-xs font-mono py-2 rounded-lg border border-slate-700 text-slate-200">Taper "A"</button>
+                    <button onclick="triggerSwitchMap('B')" class="flex-1 bg-slate-800 hover:bg-slate-700 active:scale-95 transition text-xs font-mono py-2 rounded-lg border border-slate-700 text-slate-200">Taper "B"</button>
+                    <button onclick="triggerSwitchMap('C')" class="flex-1 bg-indigo-600 hover:bg-indigo-500 active:scale-95 transition text-xs font-mono py-2 rounded-lg text-white shadow-md shadow-indigo-600/20">Taper "C" (Final)</button>
+                </div>
+            </div>
+
+            <!-- Timeline / Active Requests Visualizer -->
+            <div class="flex-1 bg-slate-950 rounded-xl p-3 border border-slate-800 flex flex-col justify-between min-h-[140px]">
+                <div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-2 flex justify-between">
+                    <span>Timeline des requêtes</span>
+                    <span id="switch-status" class="text-indigo-400 font-normal">Prêt</span>
+                </div>
+                <div id="switch-timeline" class="space-y-2 overflow-y-auto max-h-[110px] pr-1">
+                    <!-- Dynamically populated -->
+                    <div class="text-slate-600 text-xs italic text-center py-6">Aucune requête en cours...</div>
+                </div>
+            </div>
+        </div>
+
+
+        <!-- ================= CARD 2: mergeMap ================= -->
+        <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-5 flex flex-col shadow-xl relative overflow-hidden group">
+            <div class="absolute top-0 left-0 w-1.5 h-full bg-emerald-500"></div>
+            <div class="flex items-center justify-between mb-3">
+                <div class="flex items-center space-x-2">
+                    <span class="px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-400 text-xs font-mono font-semibold border border-emerald-500/20">mergeMap</span>
+                    <h2 class="text-base font-semibold text-white">Le Parallèle (YOLO)</h2>
+                </div>
+                <span class="text-xs text-slate-400 italic">Tout en même temps</span>
+            </div>
+            <p class="text-xs text-slate-400 mb-4">
+                Exécute toutes les requêtes en parallèle sans rien bloquer ni annuler. Idéal pour des actions indépendantes en masse.
+            </p>
+
+            <!-- Controller Sandbox -->
+            <div class="bg-slate-950/60 rounded-xl p-4 border border-slate-800/80 flex flex-col space-y-3 mb-4">
+                <div class="flex items-center justify-between">
+                    <label class="text-xs font-medium text-slate-300">Déclencher des flux simultanés :</label>
+                    <span class="text-[10px] text-emerald-400 bg-emerald-950/50 px-2 py-0.5 rounded border border-emerald-800/50">Concurrence max</span>
+                </div>
+                <div class="flex space-x-2">
+                    <button onclick="triggerMergeMap('Doc 1')" class="flex-1 bg-slate-800 hover:bg-slate-700 active:scale-95 transition text-xs font-mono py-2 rounded-lg border border-slate-700 text-slate-200">Envoyer Doc 1</button>
+                    <button onclick="triggerMergeMap('Doc 2')" class="flex-1 bg-slate-800 hover:bg-slate-700 active:scale-95 transition text-xs font-mono py-2 rounded-lg border border-slate-700 text-slate-200">Envoyer Doc 2</button>
+                    <button onclick="triggerMergeMap('Doc 3')" class="flex-1 bg-emerald-600 hover:bg-emerald-500 active:scale-95 transition text-xs font-mono py-2 rounded-lg text-white shadow-md shadow-emerald-600/20">Envoyer Doc 3</button>
+                </div>
+            </div>
+
+            <!-- Timeline / Active Requests Visualizer -->
+            <div class="flex-1 bg-slate-950 rounded-xl p-3 border border-slate-800 flex flex-col justify-between min-h-[140px]">
+                <div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-2 flex justify-between">
+                    <span>Timeline des requêtes</span>
+                    <span id="merge-status" class="text-emerald-400 font-normal">Prêt</span>
+                </div>
+                <div id="merge-timeline" class="space-y-2 overflow-y-auto max-h-[110px] pr-1">
+                    <div class="text-slate-600 text-xs italic text-center py-6">Aucune requête en cours...</div>
+                </div>
+            </div>
+        </div>
+
+
+        <!-- ================= CARD 3: concatMap ================= -->
+        <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-5 flex flex-col shadow-xl relative overflow-hidden group">
+            <div class="absolute top-0 left-0 w-1.5 h-full bg-amber-500"></div>
+            <div class="flex items-center justify-between mb-3">
+                <div class="flex items-center space-x-2">
+                    <span class="px-2.5 py-1 rounded-lg bg-amber-500/10 text-amber-400 text-xs font-mono font-semibold border border-amber-500/20">concatMap</span>
+                    <h2 class="text-base font-semibold text-white">La Queue (Séquentiel)</h2>
+                </div>
+                <span class="text-xs text-slate-400 italic">Chacun son tour (FIFO)</span>
+            </div>
+            <p class="text-xs text-slate-400 mb-4">
+                Met en file d'attente. La requête suivante attend sagement que la précédente soit totalement terminée.
+            </p>
+
+            <!-- Controller Sandbox -->
+            <div class="bg-slate-950/60 rounded-xl p-4 border border-slate-800/80 flex flex-col space-y-3 mb-4">
+                <div class="flex items-center justify-between">
+                    <label class="text-xs font-medium text-slate-300">Ajouter à la file d'attente :</label>
+                    <span class="text-[10px] text-amber-400 bg-amber-950/50 px-2 py-0.5 rounded border border-amber-800/50">File FIFO active</span>
+                </div>
+                <div class="flex space-x-2">
+                    <button onclick="triggerConcatMap('Étape 1')" class="flex-1 bg-slate-800 hover:bg-slate-700 active:scale-95 transition text-xs font-mono py-2 rounded-lg border border-slate-700 text-slate-200">Action A</button>
+                    <button onclick="triggerConcatMap('Étape 2')" class="flex-1 bg-slate-800 hover:bg-slate-700 active:scale-95 transition text-xs font-mono py-2 rounded-lg border border-slate-700 text-slate-200">Action B</button>
+                    <button onclick="triggerConcatMap('Étape 3')" class="flex-1 bg-amber-600 hover:bg-amber-500 active:scale-95 transition text-xs font-mono py-2 rounded-lg text-white shadow-md shadow-amber-600/20">Action C</button>
+                </div>
+            </div>
+
+            <!-- Timeline / Active Requests Visualizer -->
+            <div class="flex-1 bg-slate-950 rounded-xl p-3 border border-slate-800 flex flex-col justify-between min-h-[140px]">
+                <div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-2 flex justify-between">
+                    <span>Timeline des requêtes</span>
+                    <span id="concat-status" class="text-amber-400 font-normal">File vide</span>
+                </div>
+                <div id="concat-timeline" class="space-y-2 overflow-y-auto max-h-[110px] pr-1">
+                    <div class="text-slate-600 text-xs italic text-center py-6">Aucune requête en cours...</div>
+                </div>
+            </div>
+        </div>
+
+
+        <!-- ================= CARD 4: exhaustMap ================= -->
+        <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-5 flex flex-col shadow-xl relative overflow-hidden group">
+            <div class="absolute top-0 left-0 w-1.5 h-full bg-rose-500"></div>
+            <div class="flex items-center justify-between mb-3">
+                <div class="flex items-center space-x-2">
+                    <span class="px-2.5 py-1 rounded-lg bg-rose-500/10 text-rose-400 text-xs font-mono font-semibold border border-rose-500/20">exhaustMap</span>
+                    <h2 class="text-base font-semibold text-white">Le Videur (Anti-Spam)</h2>
+                </div>
+                <span class="text-xs text-slate-400 italic">Ignore si occupé</span>
+            </div>
+            <p class="text-xs text-slate-400 mb-4">
+                Ignore purement et simplement les nouveaux déclencheurs tant que l'appel en cours n'est pas terminé.
+            </p>
+
+            <!-- Controller Sandbox -->
+            <div class="bg-slate-950/60 rounded-xl p-4 border border-slate-800/80 flex flex-col space-y-3 mb-4">
+                <div class="flex items-center justify-between">
+                    <label class="text-xs font-medium text-slate-300">Spammer le bouton Payer :</label>
+                    <span class="text-[10px] text-rose-400 bg-rose-950/50 px-2 py-0.5 rounded border border-rose-800/50">Anti-double-clic</span>
+                </div>
+                <div class="flex space-x-2">
+                    <button onclick="triggerExhaustMap('Clic 1 (Validé)')" class="flex-1 bg-rose-600 hover:bg-rose-500 active:scale-95 transition text-xs font-mono py-2 rounded-lg text-white shadow-md shadow-rose-600/20">Cliquer (1)</button>
+                    <button onclick="triggerExhaustMap('Clic 2 (Spam)')" class="flex-1 bg-slate-800 hover:bg-slate-700 active:scale-95 transition text-xs font-mono py-2 rounded-lg border border-slate-700 text-slate-200">Spam (2)</button>
+                    <button onclick="triggerExhaustMap('Clic 3 (Spam)')" class="flex-1 bg-slate-800 hover:bg-slate-700 active:scale-95 transition text-xs font-mono py-2 rounded-lg border border-slate-700 text-slate-200">Spam (3)</button>
+                </div>
+            </div>
+
+            <!-- Timeline / Active Requests Visualizer -->
+            <div class="flex-1 bg-slate-950 rounded-xl p-3 border border-slate-800 flex flex-col justify-between min-h-[140px]">
+                <div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-2 flex justify-between">
+                    <span>Timeline des requêtes</span>
+                    <span id="exhaust-status" class="text-rose-400 font-normal">Disponible</span>
+                </div>
+                <div id="exhaust-timeline" class="space-y-2 overflow-y-auto max-h-[110px] pr-1">
+                    <div class="text-slate-600 text-xs italic text-center py-6">Aucune requête en cours...</div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Footer Script Simulation Logic -->
+    <script>
+        // --- 1. SWITCHMAP SIMULATION ---
+        let switchActiveRequest = null;
+        let switchCounter = 0;
+
+        function triggerSwitchMap(label) {
+            const container = document.getElementById('switch-timeline');
+            const statusEl = document.getElementById('switch-status');
+            
+            // Clear placeholder if first item
+            if (switchCounter === 0) container.innerHTML = '';
+            switchCounter++;
+            const reqId = `Req-${switchCounter} (${label})`;
+
+            // If there's an active request, cancel it
+            if (switchActiveRequest) {
+                const prevEl = document.getElementById(switchActiveRequest.id);
+                if (prevEl) {
+                    prevEl.className = "flex items-center justify-between p-2 rounded-lg bg-rose-950/40 border border-rose-800/60 text-xs font-mono request-pill text-rose-300";
+                    prevEl.querySelector('.req-state').innerHTML = `<span class="text-rose-400 font-bold">ANNULÉ (zappé)</span>`;
+                }
+                clearTimeout(switchActiveRequest.timer);
+            }
+
+            // Create new element
+            const elId = `switch-req-${switchCounter}`;
+            const div = document.createElement('div');
+            div.id = elId;
+            div.className = "flex items-center justify-between p-2 rounded-lg bg-indigo-950/40 border border-indigo-800/60 text-xs font-mono request-pill text-indigo-200";
+            div.innerHTML = `<span>🚀 ${reqId}</span><span class="req-state text-indigo-400 animate-pulse">En cours... (2s)</span>`;
+            container.prepend(div);
+
+            statusEl.innerText = `Actif: ${reqId}`;
+
+            // Simulate API latency (2 seconds)
+            const timer = setTimeout(() => {
+                div.className = "flex items-center justify-between p-2 rounded-lg bg-emerald-950/40 border border-emerald-800/60 text-xs font-mono text-emerald-300";
+                div.querySelector('.req-state').innerHTML = `<span class="text-emerald-400 font-bold">SUCCÈS ✅</span>`;
+                if (switchActiveRequest && switchActiveRequest.id === elId) {
+                    switchActiveRequest = null;
+                    statusEl.innerText = "Prêt";
+                }
+            }, 2000);
+
+            switchActiveRequest = { id: elId, timer };
+        }
+
+
+        // --- 2. MERGEMAP SIMULATION ---
+        let mergeCounter = 0;
+
+        function triggerMergeMap(label) {
+            const container = document.getElementById('merge-timeline');
+            const statusEl = document.getElementById('merge-status');
+
+            if (mergeCounter === 0) container.innerHTML = '';
+            mergeCounter++;
+            const reqId = `Flux-${mergeCounter} (${label})`;
+
+            const div = document.createElement('div');
+            div.className = "flex items-center justify-between p-2 rounded-lg bg-emerald-950/40 border border-emerald-800/60 text-xs font-mono request-pill text-emerald-200";
+            div.innerHTML = `<span>⚡ ${reqId}</span><span class="req-state text-emerald-400 animate-pulse">Parallèle (2s)...</span>`;
+            container.prepend(div);
+            statusEl.innerText = "Exécution en parallèle";
+
+            setTimeout(() => {
+                div.className = "flex items-center justify-between p-2 rounded-lg bg-emerald-950/30 border border-emerald-800/40 text-xs font-mono text-emerald-300";
+                div.querySelector('.req-state').innerHTML = `<span class="text-emerald-400 font-bold">TERMINÉ ✅</span>`;
+            }, 2000);
+        }
+
+
+        // --- 3. CONCATMAP SIMULATION ---
+        let concatQueue = [];
+        let isConcatBusy = false;
+        let concatCounter = 0;
+
+        function triggerConcatMap(label) {
+            const container = document.getElementById('concat-timeline');
+            const statusEl = document.getElementById('concat-status');
+
+            if (concatCounter === 0) container.innerHTML = '';
+            concatCounter++;
+            const reqId = `Queue-${concatCounter} (${label})`;
+
+            // Create queued UI element
+            const div = document.createElement('div');
+            div.id = `concat-${concatCounter}`;
+            div.className = "flex items-center justify-between p-2 rounded-lg bg-amber-950/40 border border-amber-800/60 text-xs font-mono request-pill text-amber-200";
+            div.innerHTML = `<span>⏳ ${reqId}</span><span class="req-state text-amber-400">En attente dans la file</span>`;
+            container.prepend(div);
+
+            concatQueue.push({ id: `concat-${concatCounter}`, label: reqId, element: div, statusSpan: div.querySelector('.req-state') });
+            processConcatQueue(statusEl);
+        }
+
+        function processConcatQueue(statusEl) {
+            if (isConcatBusy || concatQueue.length === 0) return;
+            isConcatBusy = true;
+
+            const current = concatQueue.shift();
+            current.element.className = "flex items-center justify-between p-2 rounded-lg bg-amber-950/60 border border-amber-600 text-xs font-mono request-pill text-amber-100";
+            current.statusSpan.innerHTML = `<span class="text-amber-400 animate-pulse font-bold">En cours... (2s)</span>`;
+            statusEl.innerText = `Traitement: ${current.label}`;
+
+            setTimeout(() => {
+                current.element.className = "flex items-center justify-between p-2 rounded-lg bg-emerald-950/40 border border-emerald-800/60 text-xs font-mono text-emerald-300";
+                current.statusSpan.innerHTML = `<span class="text-emerald-400 font-bold">TERMINÉ ✅</span>`;
+                isConcatBusy = false;
+                if (concatQueue.length > 0) {
+                    processConcatQueue(statusEl);
+                } else {
+                    statusEl.innerText = "File vide (Prêt)";
+                }
+            }, 2000);
+        }
+
+
+        // --- 4. EXHAUSTMAP SIMULATION ---
+        let isExhaustBusy = false;
+        let exhaustCounter = 0;
+
+        function triggerExhaustMap(label) {
+            const container = document.getElementById('exhaust-timeline');
+            const statusEl = document.getElementById('exhaust-status');
+
+            if (exhaustCounter === 0) container.innerHTML = '';
+            exhaustCounter++;
+            const reqId = `Action-${exhaustCounter} (${label})`;
+
+            const div = document.createElement('div');
+            div.className = "flex items-center justify-between p-2 rounded-lg text-xs font-mono";
+            
+            if (isExhaustBusy) {
+                // Ignoré par le videur !
+                div.className += " bg-rose-950/30 border border-rose-900/50 text-rose-400/70 line-through";
+                div.innerHTML = `<span>🚫 ${reqId}</span><span class="font-bold text-rose-500">JETÉ À LA POUBELLE (Ignoré)</span>`;
+                container.prepend(div);
+                return;
+            }
+
+            // Accepté
+            isExhaustBusy = true;
+            div.className += " bg-rose-950/50 border border-rose-700 text-rose-200 request-pill";
+            div.innerHTML = `<span>🔒 ${reqId}</span><span class="req-state text-rose-400 animate-pulse font-bold">En cours... (2s)</span>`;
+            container.prepend(div);
+            statusEl.innerText = "🔒 Verrouillé (Occupé)";
+
+            setTimeout(() => {
+                div.className = "flex items-center justify-between p-2 rounded-lg bg-emerald-950/40 border border-emerald-800/60 text-xs font-mono text-emerald-300";
+                div.querySelector('.req-state').innerHTML = `<span class="text-emerald-400 font-bold">SUCCÈS ✅</span>`;
+                isExhaustBusy = false;
+                statusEl.innerText = "Disponible";
+            }, 2000);
+        }
+    </script>
+
+</body>
+</html>
